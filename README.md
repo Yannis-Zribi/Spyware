@@ -14,6 +14,6 @@ Projet de Spyware à faire pour la matière Scripting Python
 - Recevoir les fichiers venant du client (avec toutes les frappes dedans)
 - Ajouter les données reçues (tout rassembler dans un fichier unique par client) 
 - Envoyer au client l’ordre de s'arrêter
--Gérer les arguments sur le serveur.
-- Faire la visualisation des fichiers (-r)
-- Faire l’arrêt des autres instances de serveurs (-k)
+- Gérer les arguments sur le serveur.
+  - Faire la visualisation des fichiers (-r)
+  - Faire l’arrêt des autres instances de serveurs (-k)
