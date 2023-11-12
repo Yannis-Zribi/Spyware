@@ -70,6 +70,17 @@ def display_files():
         print("No files captured yet")
 
 
+def read_file(filename):
+
+    try :
+        with open ("captures/" + filename, "r") as file:
+            print("File content :")
+            content = file.read()
+            print(content)
+    except FileNotFoundError:
+        print(f"File '{filename}' not found in the 'captures' folder.")
+        display_files()
+
 # Traitement
 
 if args.listen:
@@ -97,7 +108,8 @@ elif args.show:
 
 
 elif args.readfile:
-    print("read a file")
+    read_file(args.readfile)
+    sys.exit()
 
 elif args.kill:
     print("kill all the instances")
