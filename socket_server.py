@@ -65,6 +65,9 @@ def display_files():
     print("List of files captured :")
     for file in files:
         print(" - " + file)
+    
+    if files == []:
+        print("No files captured yet")
 
 
 # Traitement
