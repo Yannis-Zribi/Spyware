@@ -6,6 +6,7 @@ import sys
 import os
 from pathlib import Path
 from threading import Thread
+import signal
 
 
 
@@ -51,17 +52,34 @@ def handle_client(conn, addr):
 
                 print(f"Data received and saved in {filename}")
             
-        # except KeyboardInterrupt:
-        #     listen = False
-        #     conn.close()
-
-        #     print(f"Connection closed with {addr}")
 
         except Exception as e:
             listen = False
             print(f"Error: {e}")
 
 
+
+def test(signum, frame):
+
+    answered = False
+    
+    while not answered:
+        respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
+
+        if respons == 'y' or respons == 'n':
+            answered = True
+
+    if respons == 'n':
+        # revenir en arrière
+        print("[+] Le serveur ne sera pas arrêté")
+    else:
+        # arrêter le serveur
+        print("[+] Le serveur va s'arrêter")
+        for thread in threads:
+            thread[1].close()
+            print(f"[+] Fin de la connexion avec {thread[2]}")
+        
+        running = False
 
 
 
@@ -79,22 +97,66 @@ if args.listen:
 
     print(f"Server listening on {host}:{port}")
 
-
+    # global running
     running = True
 
+    # global threads
     threads = []
 
+
+    # signal.signal(signal.SIGINT, test)
+
+
     while running:
+        try:
+    
 
-        conn, addr = server_socket.accept()
+            conn, addr = server_socket.accept()
 
-        thread = Thread(target=handle_client, args=(conn, addr))
-
-        thread.start()
-
-        threads.append(thread)
+            thread = Thread(target=handle_client, args=(conn, addr))
+            threads.append([thread, conn, addr])
+            thread.start()
 
 
+
+        except KeyboardInterrupt as e:
+            answered = False
+            
+            while not answered:
+                respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
+
+                if respons == 'y' or respons == 'n':
+                    answered = True
+
+            if respons == 'n':
+                # ne rien faire
+                print("[+] Le serveur ne sera pas arrêté")
+
+
+            else:
+
+                print(threads)
+                
+
+                # arrêter le serveur
+                print("[+] Le serveur va s'arrêter")
+                for thread in threads:
+                    thread[1].close()
+                    print(f"[+] Fin de la connexion avec {thread[2][0]}")
+                
+                running = False
+
+                server_socket.close()
+
+
+
+
+        except Exception as e:
+            running = False
+
+            server_socket.close()
+
+            print(f"Error: {e}")
 
 
 elif args.show:
