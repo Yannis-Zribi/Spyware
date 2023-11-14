@@ -135,7 +135,10 @@ if args.listen:
 
             else:
 
-                print(threads)
+                for t, c, a in threads:
+                    print(f"thread : {t}")
+                    print(f"connection : {c}")
+                    print(f"address : {a}")
                 
 
                 # arrêter le serveur
@@ -153,8 +156,6 @@ if args.listen:
 
         except Exception as e:
             running = False
-
-            server_socket.close()
 
             print(f"Error: {e}")
 
