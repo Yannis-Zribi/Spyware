@@ -5,7 +5,7 @@ import ssl
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Liaison du socket à une adresse et un port
-server_socket.bind(('localhost', 8443))
+server_socket.bind(('172.16.120.1', 8443))
 
 # Mettre le socket en mode écoute
 server_socket.listen(1)

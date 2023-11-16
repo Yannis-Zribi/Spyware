@@ -6,7 +6,7 @@ import sys
 import os
 from pathlib import Path
 from threading import Thread
-import signal
+import ssl
 
 # Arguments 
 
@@ -36,6 +36,7 @@ def handle_client(conn, addr):
             # Réception des données
             data = conn.recv(1024).decode('utf-8')
 
+            # si des données ont été réceptionnées
             if data:
 
                 fic = list(path_captures.glob(f"{addr[0]}*.txt"))
@@ -47,7 +48,7 @@ def handle_client(conn, addr):
                 else:
                     ficfilename = fic[0]
                     with open(ficfilename, 'a') as file:
-                        file.write(data)
+                        file.write(f"\n{data}")
                     os.rename(ficfilename,filename)
 
                 print(f"Data received and saved in {filename}")
@@ -86,34 +87,39 @@ if args.listen:
     host = '172.16.120.1'
     port = args.listen
 
+    # crétaion et configuration du socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen()
 
     print(f"Server listening on {host}:{port}")
 
-    # global running
     running = True
 
-    # global threads
     threads = []
-
-
-    # signal.signal(signal.SIGINT, test)
 
 
     while running:
         try:
     
-
+            # récupération de la connexion
             conn, addr = server_socket.accept()
 
-            thread = Thread(target=handle_client, args=(conn, addr))
-            threads.append([thread, conn, addr])
+            # création du contexte ssl (avec le certificat et la clé privée)
+            context_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            context_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
+            
+            # utilisation du SSL pour lire les données entrantes
+            ssl_socket = context_ssl.wrap_socket(conn, server_side=True)
+
+            # création et configuration du thread
+            thread = Thread(target=handle_client, args=(ssl_socket, addr))
+            threads.append([thread, ssl_socket, addr])
             thread.start()
 
 
 
+        # interception du KeyboardInterrupt
         except KeyboardInterrupt as e:
             answered = False
             
