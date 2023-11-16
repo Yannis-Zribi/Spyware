@@ -59,15 +59,35 @@ def display_files():
 
 
 def read_file(filename):
+    try:
+        fic = list(path_captures.glob(f"*{filename}*"))
+        if fic == []:
+            print("File not found")
+        elif len(fic) == 1 :
+            with open (fic[0], "r") as file:
+                print(f"File content ({fic[0].name}) :")
+                content = file.read()
+                print(content)
+        elif len(fic) > 5 :
+            print("Too many files found ! \nPlease be more specific")
+        else:
+            print("Several files found :")
+            for i in range(len(fic)):
+                print(f"{i} - {fic[i].name}")
+            while True:
+                print("Which one do you want to read ?")
+                index = int(input("Enter the index of the file you want to read : "))
+                if 0 <= index < len(fic):
+                    with open(fic[index], "r") as file:
+                        print(f"File content ({fic[index].name}) :")
+                        content = file.read()
+                        print(content)
+                    break
+                else:
+                    print("Invalid index")
+    except Exception as e:
+        print(f"Error: {e}")
 
-    try :
-        with open ("captures/" + filename, "r") as file:
-            print("File content :")
-            content = file.read()
-            print(content)
-    except FileNotFoundError:
-        print(f"File '{filename}' not found in the 'captures' folder.")
-        display_files()
 
 
 
