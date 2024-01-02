@@ -233,7 +233,8 @@ if args.listen:
 
         # création du contexte ssl (avec le certificat et la clé privée)
         context_connexion_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        context_connexion_ssl.load_cert_chain(certfile="./ssl3/cert.pem", keyfile="./ssl3/private_key.pem")
+        context_connexion_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
+        # context_connexion_ssl.load_cert_chain(certfile="./ssl3/cert.pem", keyfile="./ssl3/private_key.pem")
         
         # utilisation du SSL pour lire les données entrantes
         ssl_socket = context_connexion_ssl.wrap_socket(conn, server_side=True)
